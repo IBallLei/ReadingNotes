@@ -32,7 +32,10 @@
 #### 2.1 单例模式介绍
 
 **定义：** 确保某一个类只有一个实例，而且自行实例化并向整个系统提供这个实例。
+
 **场景：** 避免产生多个对象消耗过多的资源，或某种类型对象只应该有一个实例。
+
+*****************************************************
 
 #### 2.2 实现方式
 
@@ -134,6 +137,7 @@ public class SingletonManager {
 
 &emsp;&emsp;核心原理就是构造函数私有化，通过静态方法获取唯一实例，保证线程安全，防止反序列化。用哪种取决项目本身。
 
+*****************************************************
 
 #### 2.3 Android源码中的单例模式:LayoutInflater
 
@@ -150,6 +154,8 @@ public class SingletonManager {
     * 然后通过key获取对应的fatcher类，然后调用其getService()获取服务对象
     * 当第一次获取时，会创建实例然后存放到缓存列表中，之后调用直接获取缓存。
 6. 运用了容器管理的单例模式。
+
+*****************************************************
 
 #### 2.4 深入理解LayoutInflater
 
@@ -169,6 +175,8 @@ public class SingletonManager {
 
 6. rInflate()：遍历解析创建树状视图，每个元素递归调用rInflate()。构建完毕setContentView显示。
 
+*****************************************************
+
 #### 2.5 总结
 
 ##### 优点：
@@ -183,7 +191,108 @@ public class SingletonManager {
 1. 没有接口，拓展困难，只能改代码来实现。
 2. 持有Context时，容易导致内存泄漏，如果用最好是ApplicationContext。
 
+*****************************************************
+
+## 第三章 自由拓展你的项目——Builder模式
+
+#### 3.1 Builder模式介绍
+
+**定义：**将一个复杂对象的构建与它的表示分离，使同样的构建过程可以创建不同的表示。
+
+**场景：**
+
+1. 相同的方法，不同的执行顺序，产生不同的事件结果时。
+
+2. 多个部件或零件，都可以装配到一个对象中，但是产生的结果不相同时。
+
+3. 产品类非常复杂，或产品类中的调用顺序不同产生不同的作用时。
+
+4. 当初始化一个对象非常复杂，如参数多，且很多参数都有默认值时。
+
+**角色：**
+
+* **Product**：产品类
+* **Builder**：建造抽象类
+* **ConcreteBuilder**：建造实现类
+* **Director**：组装过程类
+
 -----------------------------------------------------
+
+#### 3.2 实现方式
+
+1. **Product**：创建Bean的实体产品类
+
+2. **Builder**：创建定义建造抽象方法的抽象建造类，定义构建方法和创建方法
+
+3. **ConcreteBuilder**
+：创建继承自抽象类的具体实现的抽象类，持有产品类的引用，在创建方法中返回产品类
+
+4. **Director**：创建时传入 Builder 实现类，在构建方法里调用 Builder 的构建方法传入参数，最终调用 Builder 的创建方法，返回实体产品对象。
+
+    >现实中，Director 通常会被省略，直接在 Builder 类中进行组装，然后再组装的方法中返回自身。
+
+    >形成链式调用：new Builder().setA("a").setB("b").create();
+
+    >这样做不仅结构简单，而且也能对 Product 进行精密控制。
+
+-----------------------------------------------------
+
+#### 3.3 Android中的建造者模式：AlertDialog.Builder
+
+##### 3.3.1 AlertDialog.Builder 的使用代码如下：
+
+```
+AlertDialog alertDialog = new AlertDialog.Builder(mActivity)
+                .setIcon(R.drawable.icon)
+                .setTitle("title")
+                .setMessage("msg")
+                .create();
+alertDialog.show();
+```
+
+##### 3.3.2 AlertDialog.Builder 的使用的内部代码解析：
+
+1. AlertDialog 的中所有设置参数的set方法，都是调用成员变量 AlertController 的同名方法，并且在 AlertDialog 创建的时候创建 AlertController 对象。
+
+2. AlertDialog.Builder 作为 AlertDialog 的内部类，同样内部也有一个成员变量 AlertController.AlertParams P 在构建的set方法中，将参数赋值给 P 的成员属性，并返回 Builder 本身，形成链式调用。
+
+3. 调用 AlertDialog.Builder 的 create() 方法完成 AlertDialog 对象的创建，并且返回。
+
+    1. 创建 AlertDialog 对象
+    
+    2. 调用 Builder 中 P 的 apply()方法传入 AlertDialog 中的 AlertController ，在该方法中，完成构建参数的传递。
+
+4. 调用 AlertDialog.show() 方法显示 AlertDialog 窗口内容。
+
+    1. 调用 onCreate() 方法完成页面控件的解析创建的初始化，在内部调用了 alertController.installContent()方法。
+    
+        1. 通过 setContentView() 设置了窗口的布局。
+    
+        2. 调用 setupView() 方法：
+        
+            1. 获取初始化内容区域
+            2. 初始化按钮
+            3. 初始化title
+            4. 初始化自定义区域，如果有的话
+            5. 等等，最后初始化背景
+    
+    2. 调用 onStart() 方法。
+    
+    3. 获取 DecorView。
+    
+    4. 获取布局参数。
+    
+    5. 将 DecorView 添加到 WindowManager 中，并发送一个显示 dialog 的消息。
+
+-----------------------------------------------------
+
+#### 3.4 深入理解 WindowManager（以及 WMS —— WindowManagerService）
+
+
+
+
+
+
 
 
 
