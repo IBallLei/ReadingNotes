@@ -288,6 +288,20 @@ alertDialog.show();
 
 #### 3.4 深入理解 WindowManager（以及 WMS —— WindowManagerService）
 
+1. 与 LayoutInflate 相同，首先通过 Context.getSystemService() 在 ContextImpl 中初始化时注册在装有各类服务的 map 中，获取 WindowManager 的服务实例 WindowManagerImpl。
+
+2. 通过 Dialog 的构造函数传入 context，然后通过 context.getSystemService() 方法获取到 WindowManager 
+
+3. 通过 PolicyManager.makeNewWindow(context) 获取到 Window 对象。
+
+4. 给 Window 设置回调，传入 Dialog 对象本身。
+
+5. 调用 window.setWindowManager(windowManager), 将 Window 与 Manager 关联。在其方法内部通过传入的 windowManager 调用 createLocalWindowManager() 方法，传入 window 本身，用来创建返回 WindowManagerImpl 对象，并赋值给 Window 中的成员变量。
+
+    1. 
+
+6. 
+
 
 
 
