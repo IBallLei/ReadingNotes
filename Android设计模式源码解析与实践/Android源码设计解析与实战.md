@@ -387,10 +387,9 @@ alertDialog.show();
 
 **角色：**
 
-* **Product**：产品类
-* **Builder**：建造抽象类
-* **ConcreteBuilder**：建造实现类
-* **Director**：组装过程类
+* **Client**：客户端用户
+* **Prototype**：抽象类或借口
+* **ConcretePrototype**：原型实现类
 
 
 
