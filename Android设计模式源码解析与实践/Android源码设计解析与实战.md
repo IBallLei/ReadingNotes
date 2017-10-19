@@ -27,6 +27,10 @@
 
 -----------------------------------------------------
 
+
+
+
+
 ## 第二章 应用最广的模式——单例模式
 
 #### 2.1 单例模式介绍
@@ -193,6 +197,10 @@ public class SingletonManager {
 
 *****************************************************
 
+
+
+
+
 ## 第三章 自由拓展你的项目——Builder模式
 
 #### 3.1 Builder模式介绍
@@ -288,9 +296,11 @@ alertDialog.show();
 
 #### 3.4 深入理解 WindowManager（以及 WMS —— WindowManagerService）
 
+##### 3.4.1 将 Dialog 添加到手机窗口显示的过程
+
 1. 与 LayoutInflate 相同，首先通过 Context.getSystemService() 在 ContextImpl 中初始化时注册在装有各类服务的 map 中，获取 WindowManager 的服务实例 WindowManagerImpl。
 
-2. 通过 Dialog 的构造函数传入 context，然后通过 context.getSystemService() 方法获取到 WindowManager 
+2. 通过 Dialog 的构造函数传入 context，然后通过 context.getSystemService() 方法获取到 WindowManager 。
 
 3. 通过 PolicyManager.makeNewWindow(context) 获取到 Window 对象。
 
@@ -298,11 +308,89 @@ alertDialog.show();
 
 5. 调用 window.setWindowManager(windowManager), 将 Window 与 Manager 关联。在其方法内部通过传入的 windowManager 调用 createLocalWindowManager() 方法，传入 window 本身，用来创建返回 WindowManagerImpl 对象，并赋值给 Window 中的成员变量。
 
-    1. 
+    1. 创建 WindowManagerImpl 时，调用构造函数多传入一个 parentWindow ，进行关联。
 
-6. 
+    2. WindowManagerImpl 中的其他方法，是通过内部成员变量 WindowManagerGlobal 的代理，调用同名的相应方法（addView(), removeView()等）。
+
+6. 在以上准备好后，调用 WindowManager 的 addView() 方法，也就是 WindowManagerGlobal 的方法。将要显示的 View 加到 Window 里面。
+
+    1. 构建 ViewRootImpl 对象
+
+    2. 给需要添加的 View 设置布局属性 setLayoutParam
+
+    3. 将 View 添加到 Views 列表中，将 root 添加到 roots 集合中，将布局参数加到布局集合中。
+
+    4. 调用 root.setView() 将 View 显示到手机窗口中。
+
+##### 3.4.2 ViewRootImpl 的创建与通信的桥梁（只讨论 WindowManager 模块）
+
+1. ViewRootImpl：继承自 Handler 是 native 层与 java 层通信的桥梁
+
+2. 构造函数中，会通过 WindowManagerGlobal.getWindowSession，这是建立通信的地方。
+
+    1. 通过 IWindowManager.Stub.asInterface(ServiceManager.getService("window")) 获取 WMS（IBinder）并转化成 WindowManager。
+
+        1. ServiceManager.getService() 中先去缓存集合中去取"window"中的 WMS。
+
+        2. 如果没有缓存，再调用 getIServiceManager().getService("window") 并返回。
+
+    2. 调用 WMS.openSession() 方法，创建一个 session 并返回
+
+3. 保存当前线程，创建时，是在UI线程创建的。
+
+4. 再 Root.setView() 之后并不能直接显示，WMS 管理的不是 Window 其实是 View（DecorView），其中：
+
+    1. 主要是调用 requestLayout()，请求布局：发送 DO_TRAVERSAL 消息调用 performTraversals() 方法进行测量绘制，内部最后会调用performDraw()进行绘制。
+
+        1. 判断是 CPU 绘制，还是 GPU 绘制。
+        2. 获取绘制表面的 Surface 对象。
+        3. 通过 Surface 获取并锁住 Canvas 对象。
+        4. 从 DecorView 开始绘制整个视图树。
+        5. Surface 解锁 Canvas 对象，并通知 SurfaceFlinger 更新视图。
+
+    2. 绘制完整个窗后视图后，通过 session 向 WMS 发送显示请求。
+
+-----------------------------------------------------
+
+#### 3.5 总结
+
+##### 优点：
+
+1. 良好的封装性，隐藏构建细节。
+2. 建造者独立，容易拓展。
+
+##### 缺点：
+
+1. 增加类，占用内存。
+
+-----------------------------------------------------
 
 
+
+
+
+## 第四章 使程序运行高效——原型模式
+
+#### 4.1  原型模式介绍
+
+**定义：**用原型实例指定创建对象的种类，并通过拷贝这些原型创建新的对象。
+
+**场景：**
+
+1. 类的初始化需要消耗非常多的资源。
+
+2. 通过 new 产生一个对象时，需要非常繁琐的数据准备和访问权限。
+
+3. 一个对象需要提供给其他对象访问，且各个调用的对象需要修改其属性值，即保护性拷贝。
+
+> 需要注意：
+
+**角色：**
+
+* **Product**：产品类
+* **Builder**：建造抽象类
+* **ConcreteBuilder**：建造实现类
+* **Director**：组装过程类
 
 
 
