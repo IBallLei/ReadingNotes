@@ -391,6 +391,8 @@ alertDialog.show();
 * **Prototype**：抽象类或借口
 * **ConcretePrototype**：原型实现类
 
+-----------------------------------------------------
+
 #### 4.2 实现方式
 
 1. ConcretePrototype:
@@ -421,11 +423,15 @@ public class A implements Cloneable {
 
 2. client端：创建 A 对象，给其赋值，然后克隆一个对象，对其赋其他值，调用 show 方法，显示不同的属性值。
 
+-----------------------------------------------------
+
 #### 4.3 浅拷贝和深拷贝
 
 **浅拷贝：**并不是将对象的所有字段全部重新构造一遍，而是将指针指向同一地址。当其中拷贝的属性内容发生变化，有可能导致原型对象也发生变化。
 
 **深拷贝：**完善浅拷贝的方法，将成员属性也重新拷贝一份，导致指针指向不同的地址，从而不会对原型对象造成改变。
+
+-----------------------------------------------------
 
 #### 4.4 Android 源码中的原型模式实现
 
@@ -441,10 +447,76 @@ public class A implements Cloneable {
 
 3. 可以看出，如果构造函数成本比较高的时候，那么使用克隆函数效率更高，否则可以使用构造函数。如 Intent ，将原型对象当做参数，用构造函数重新创建一个对象，并将值重新拷贝一遍。
 
+-----------------------------------------------------
+
 #### 4.5 Intent 的查找与匹配
 
+##### 4.5.1 App信息表的构建
 
+1. **PackageServiceManager：**系统启动的时候注册各种服务包括 PSM ，PSM 启动之后，会扫描已经安装的 apk 目录，然后解析每个 apk 的 AndroidManifest.xml 文件，解析出里面的信息（包括 Activity 和 Service 等注册信息），扫描解析后，就构成了整个 apk 信息树。下面是解析过程：
 
+    1. 在 PSM 构造函数中，获取 data 目录；加载 Framework 资源；加载核心库；获取系统应用目录，扫描系统应用目录；扫描第三方应用。
+
+    2. 扫描方法 scanDirLI() 内部实现：
+
+        1. 获取目录下所有文件
+        2. 循环解析目录下所有 apk 文件（不是 apk 文件的跳过）；循环中，解析 apk 文件方法 scanPackageLI()
+
+    3. 解析 apk 文件方法 scanPackageLI()：
+
+        1. 创建解析包：PackageParser
+
+        2. 用解析包解析扫描到的文件，获得包信息对象 PackageParser.Package apk。
+
+            1. 如果该文件是文件夹，则解析文件夹下的所有 apk 文件，parseClusterPackage()。
+
+            2. 如果是单个 apk 文件，则解析单个文件，parseMonolithicPackage()。
+
+                1. 构建 AssetManager 对象
+
+                2. 构建资源 Resource 
+
+                3. 用 assetManager 对象，获取 AndroidManifest 解析器。assmg.openXmlResourceParser()
+
+                4. 解析获取到的 AndroidManifest.xml 文件。parsePackage()
+
+                    1. 解析包名，构建 Package 对象。
+
+                    2. 循环解析内部元素：
+
+                        1. 解析到 application 元素时，再次解析 application 内部的 Activity 和 Service 等组件。parseApplication()，在方法内部，获取包名，应用名，应用图标等其他属性，以及四大组件的信息，根据不同的标签调用不同的解析方法。
+
+                        2. 解析到 users-permission 权限元素时，再次解析内部权限。 parseUsersPermission()
+
+        3. 解析 apk 得到的信息中的 Activity 和 Service 等组件。scanPackageLI()，内部调用 scanPackageDirtyLI() 进行扫描。
+
+            1. 将 apk 中解析到的到的 PackageParser.Activity 等组件全部取出，并分别存到 PMS 中的集合 mActivitys，mServices，mReceivers中；
+
+2. 通过 PackageServiceManager 获得到的 apk 的信息全部存到系统当中，当通过 Intent 启动组件的时候，就会去这个信息表中查找，符合要求的组件就会被启动。这样就将各个组件连接在一起。
+
+##### 4.5.2 精准匹配
+
+1. 通过 Intent 启动 Activity 时，最终都是调用 startActivityForResult() 。
+
+2. 启动 Activity：调用 mInstrumentation.execStartActivity()。
+
+    1. 将 Intent 中的数据迁移到粘贴板上，调用 Intent 的方法 prepareToLeaveProcess() 准备离开当前线程。
+
+    2. 调用 AMS 的 startActivity() 方法，里面有调用了 ActivityStackSupervisor 的 startActivityMayWait()，该方法最后调用了 PMS 的 resolveIntent() ，内部有调用了 PMS 自身的 queryIntentActivities() 返回一个符合匹配的 ActivityInfo 列表 List<ResolveInfo>，每个元素是记录一个 Activity 的信息。
+
+        1. 在 queryIntentActivities() 中，先获取 Intent 的 Component 对象。
+
+        2. 精确查找时（显式启动），component 不为空，通过 getActivityInfo(component) 获取 ActivityInfo，然后将 ai 赋值给构建的 ResolveInfo 的成员变量，将 ri 加到构建的集合中，返回。
+
+        3. 当隐式启动时，component 为空：Intent 获取包名，通过包名获取 Package 对象，调用 mActivities.queryIntentForPackage() 返回查询结果。
+
+    3. 检测结果，并且返回给调用端。
+
+3. 发送启动请求：mMainThread.sendActivityResult()。
+
+-----------------------------------------------------
+
+#### 4.6 原型模式实战
 
 
 
