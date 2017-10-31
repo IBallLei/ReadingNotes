@@ -371,7 +371,7 @@ alertDialog.show();
 
 ## 第四章 使程序运行高效——原型模式
 
-#### 4.1  原型模式介绍
+#### 4.1 原型模式介绍
 
 **定义：**用原型实例指定创建对象的种类，并通过拷贝这些原型创建新的对象。
 
@@ -537,13 +537,232 @@ public class A implements Cloneable {
 
 ##### 优点：
 
-1. 原型模式是在内存中进行二进制流拷贝，比创建对象性能好。特别循环中。
+* 原型模式是在内存中进行二进制流拷贝，比创建对象性能好。特别循环中。
 
 ##### 缺点：
 
-1. 优点也是缺点，直接内存拷贝，构造函数不会被执行，实际中有潜在问题。
+* 优点也是缺点，直接内存拷贝，构造函数不会被执行，实际中有潜在问题。
 
 -----------------------------------------------------
+
+
+
+
+
+## 第五章 应用最广泛的模式——工厂方法模式
+
+#### 5.1 工厂方法模式介绍
+
+**定义：**定义一个用于创建对象的接口，让子类决定实例化哪个类。
+
+**场景：**在任何需要创建复杂对象的地方，复杂对象适合，直接用 new 可以创建的无需使用工厂方法模式。
+
+**角色：**
+
+* **Client**：客户端用户
+* **AbstractFactory**：抽象工厂类
+* **ConcreteFactory**：具体工厂实现类
+* **AbstractProduct**：抽象产品类
+* **ConcreteProduct**：具体产品实现类
+
+-----------------------------------------------------
+
+#### 5.2 实现方式
+
+##### 5.2.1 简单工厂模式：工厂类只有一个，创建对象只有一个
+
+```
+
+public class Factory {
+    public static Product createProduct() {
+        return new ConcreteProduct();
+    }
+}
+
+```
+
+##### 5.2.2 反射工厂模式：通过传入 Class 通过泛型和反射，创建需要返回的产品实例
+
+```
+
+public class ConcreteFactory extends Factory {
+
+    @Override
+    public <T extends Product> T createProduct(Class<T> clazz) {
+        Product p = null;
+        try {
+            p = (Product) Class.forName(clazz.getName()).newInstance();
+        }
+        return (T) p;
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        Factory factory = new ConcreteFactory();
+        Product p = factory.createProduct(ConcreteProduct.class);
+        p.method();
+    }
+}
+
+```
+
+##### 5.2.3 多工厂模式：为多个产品创建多个工厂
+
+```
+
+public class ConcreteFactoryA extends Factory {
+
+    @Override
+    public Product createProduct() {
+        return new ConcreteProductA();
+    }
+}
+
+public class ConcreteFactoryB extends Factory {
+
+    @Override
+    public Product createProduct() {
+        return new ConcreteProductB();
+    }
+}
+
+```
+
+##### 5.2.4 小民 Audi 汽车生产例子
+
+* **Client**：客户端生产线
+* **AudiFactory**：抽象 Audi 工厂类，抽象的生产汽车方法
+* **AudiCarFactory**：具体 Audi 车工厂实现类，通过反射工厂方法，实现生产方法
+* **AudiCar**：抽象奥迪车类，提供车的一些抽象方法
+* **AudiQ3,AudiQ5,AudiQ7**：具体奥迪车实现类
+
+* 通过传入奥迪车实现类到工厂实现类的方法中，获取具体实例。
+
+-----------------------------------------------------
+
+#### 5.3 源码中的工厂方法模式实现
+
+##### 5.3.1 Iterator
+
+1. List 和 Set 的实现接口 Collection 所继承的 Iterator 就一个方法 iterator()，List 和 Set 实现该方法就是构造一个实例并返回。这些实现方法就相当于工厂方法。
+
+2. ArrayList 该方法返回构造的 ArrayListIterator() 实例。
+
+3. HashSet 该方法会返回其成员变量 backingMap.KeySet().iterator() ，该方法中，构建了一个 KeyIterator() 并返回。
+
+##### 5.3.2 Activity 中的 onCreate() 方法
+
+* 通过 setContentView() 方法，传入构造的布局实例，就将不同的布局实例添加到Activity中，最后被添加到每个需要的 Activity 里面，这种模式是工程方法模式。
+
+-----------------------------------------------------
+
+#### 5.4 关于 onCreate 方法
+
+1. 一个应用程序真正的入口是：ActivityThread 的 main() 方法。
+
+2. **ActivityThread**：
+
+    1. ActivityThread 是一个 final 定义的类，不可被继承。
+
+    2. 一个应用程序对应一个 ActivityThread。
+
+    3. 当一个新的应用进程被系统的 Zygote 进程孵化出来后，会执行 ActivityThread 的 main 方法。
+
+    4. 在 main 方法中做一些常规的准备逻辑，如初始化环境，准备 Looper 和消息队列等。然后调用 attach 方法，将自身绑定在 AMS 中，开始不断读取队列中的消息和分发消息。
+
+3. ActivityThread 中的 attach 方法：
+
+    1. 调用 ActivityManagerNative.getDefult() 获取 IActivityManager 也就是 AMS。
+
+    2. 然后调用 AMS.attachApplication(mActivityThread) 将两者绑定。
+
+    3. 在 attachApplication 方法中，调用了 attachApplicationLocked 方法。
+
+    4. attachApplicationLocked 方法中主要调用了 bindApplication 和 attachApplicationLocked 两个方法。
+
+        1. bindApplication 方法中 主要就是将 ApplicationThread 绑定到 AMS 中。
+
+        2. mActivityStackSupervisor.attachApplicationLocked() 方法中，调用 realStartActivityLocked() 方法，该方法是真正启动 Activity 的方法。
+
+            1. activityRecord.startFreezingScreenLocked 锁定其他没启动的 Activity。
+
+            2. mWindowManager.setAppVisibility() 设置 token 让当前 App 显示到前台。
+
+            3. 搜集启动较慢的 App 信息，检查配置信息，设置相关参数信息。
+
+            4. 如果是桌面 Activity，将其添加到当前 Activity 栈的底部。
+
+            5. 所有参数信息到位后，准备启动 Activity，调用 ApplicationThread 的 scheduleLaunchActivity() 方法。
+
+                1. 构建 ActivityClientRecord 实例，配置相关信息。
+
+                2. 通过 sendMessage() 方法，发送启动 Activity 的信息放入队列，在 ActivityThread 中的内部类 H (继承于 Handler)中进行处理。
+
+    5. 在 ActivityThread 的 H 里面标签是 LAUNCH_ACTIVITY 消息处理中，获取传过来的 ActivityClientRecord 检查其中信息，然后调用 ActivityThread 的 handleLaunchActivity() 方法里面再调用 performLaunchActivity() 方法。
+    
+    6. performLaunchActivity() 方法中是具体启动Activity的逻辑：
+
+        1. 获取 ActivityInfo，获取 PackageInfo，获取 ComponentName
+
+        2. 构建 Activity，获取类加载器，传入到 mInstrumentation.newActivity() 中，返回 Activity 实例。
+
+        3. 获取 Application，将 Application 和 Context 绑定到 Activity 对象中
+
+        4. 通过 mInstrumentation.callActivityOnCreate() 方法，调用 Activity 的 performCreate() 方法，以及 prePerformCreate() 和 postPerformCreate()。
+
+        5. 最终在 performCreate() 方法中，调用 Activity 的 onCreate() 方法。
+
+-----------------------------------------------------
+
+#### 5.4 工厂方法模式实战
+
+1. 功能：工厂方法模式，统一管理多种数据处理，数据库，SP，文件等。
+
+2. 实现：
+
+    1. 定义数据处理方法接口
+
+    2. 定义各种数据方式处理类，实现数据处理接口，实现处理逻辑。
+
+    3. 定义工厂类，调用方法，利用反射，返回传进来的 Class 的实例。
+
+-----------------------------------------------------
+
+#### 5.5 总结
+
+优点：封装复杂的构建对象逻辑，简洁，解耦，依赖抽象，拓展性好。
+
+缺点：增加新品类和抽象层，会导致类的结构复杂化。
+
+-----------------------------------------------------
+
+
+
+
+
+## 第六章 创建型设计模式——抽象工厂模式
+
+#### 6.1 抽象工厂模式介绍
+
+**定义：**为创建一组相关或者是相互依赖的对象提供一个接口，而不需要指定他们的具体类。
+
+**场景：**一个对象族有相同的约束时。
+
+>**例子：**Android，iOS，WindowsPhone 都有拨号软件和信息软件，两者都属于 Software 软件范畴，但是操作系统不同，代码实现就是不同的。这时候考虑使用抽象工厂模式来生产不同操作系统的两个软件了。
+
+**角色：**
+
+* **Client**：客户端用户
+* **AbstractFactory**：抽象工厂类
+* **ConcreteFactory**：具体工厂实现类
+* **AbstractProduct**：抽象产品类
+* **ConcreteProduct**：具体产品实现类
+
+-----------------------------------------------------
+
+#### 6.2 实现方式
+
 
 
 
