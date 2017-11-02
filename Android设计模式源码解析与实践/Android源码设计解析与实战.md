@@ -641,7 +641,7 @@ public class ConcreteFactoryB extends Factory {
 
 -----------------------------------------------------
 
-#### 5.3 源码中的工厂方法模式实现
+#### 5.3 Android 源码中的工厂方法模式实现
 
 ##### 5.3.1 Iterator
 
@@ -754,14 +754,236 @@ public class ConcreteFactoryB extends Factory {
 **角色：**
 
 * **Client**：客户端用户
-* **AbstractFactory**：抽象工厂类
-* **ConcreteFactory**：具体工厂实现类
-* **AbstractProduct**：抽象产品类
-* **ConcreteProduct**：具体产品实现类
+* **AbstractProductA**：抽象产品类A
+* **AbstractProductB**：抽象产品类B
+* **ConcreteProductA1**：具体产品实现类A1
+* **ConcreteProductA2**：具体产品实现类A2
+* **ConcreteProductB1**：具体产品实现类B1
+* **ConcreteProductB2**：具体产品实现类B2
+* **AbstractFactory**：抽象工厂类，AB
+* **ConcreteFactory1**：具体工厂实现类，A1B1
+* **ConcreteFactory2**：具体工厂实现类，A2B2
 
 -----------------------------------------------------
 
 #### 6.2 实现方式
+
+1. AbstractFactory：
+
+```
+
+public abstract class CarFactory {
+    /**
+     * 生产轮胎
+     */
+    public abstract ITire createTire();
+
+    /**
+     * 生产发动机
+     */
+    public abstract IEngine createEngine();
+}
+
+```
+
+2. AbstractProduct 和 ConcreteProduct：
+
+```
+
+public interface ITire {
+    void tire();
+}
+
+public class NormalTire implements ITire {
+    @override
+    public void tire() {
+        // 普通轮胎
+    }
+}
+
+public class SUVTire implements ITire {
+    @override
+    public void tire() {
+        // SUV轮胎
+    }
+}
+
+public interface IEngine {
+    void engine();
+}
+
+public class NormalEngine implements IEngine {
+    @override
+    public void engine() {
+        // 普通发动机
+    }
+}
+
+public class SUVEngine implements IEngine {
+    @override
+    public void engine() {
+        // SUV发动机
+    }
+}
+
+```
+
+3. ConcreteFactory：
+
+```
+
+public class Q3Factory extends CarFactory {
+
+    /**
+     * 生产轮胎
+     */
+    public abstract ITire createTire() {
+        return new NormalTire();
+    }
+
+    /**
+     * 生产发动机
+     */
+    public abstract IEngine createEngine() {
+        return new NormalEngine();
+    }
+
+}
+
+public class Q7Factory extends CarFactory {
+
+    /**
+     * 生产轮胎
+     */
+    public abstract ITire createTire() {
+        return new SUVTire();
+    }
+
+    /**
+     * 生产发动机
+     */
+    public abstract IEngine createEngine() {
+        return new SUVEngine();
+    }
+
+}
+
+```
+
+4. Client：
+
+```
+
+public class Client {
+    public static void main(String[] args) {
+        CarFactory q3factory = new Q3Factory();
+        factory.createTire(); // 普通轮胎
+        factory.createEngine(); // 普通发动机
+        CarFactory q7factory = new Q7Factory();
+        factory.createTire(); // SUV轮胎
+        factory.createEngine(); // SUV轮胎
+    }
+}
+
+```
+
+-----------------------------------------------------
+
+#### 6.3 Android 源码中的抽象工厂方法模式
+
+##### 6.3.1 在 Framework 角度看 Activity 和 Service，二者都属于具体的工厂。
+
+##### 6.3.2 MediaPlayer
+
+1. MediaPlayerFactory：Android 底层会调用其方法 createPlayer 创建不同的 MediaPlayer，每一种创建完后，会调用 registerFactory_1 将 Player 注册到 MediaPlayerFactory 中。
+
+2. MediaPlayerFactory 的本质是管理 4 种不同的 MediaPlayer 类，每种 MediaPlayer 由各自具体的 Factory 创建。
+
+3. 四种具体工厂类继承自 MediaPlayerBase，通过不同的实现，创建不同的 MediaPlayer。
+
+-----------------------------------------------------
+
+#### 6.4 总结
+
+* 优点：分离接口和实现，使用抽象工厂来创建需要的对象，不用知道具体实现是谁，面向产品的接口编程，从具体的接口实现中解耦。基于接口和实现的分离，使该模式在切换产品类时更加灵活。
+
+* 缺点：类文件爆炸性增加；不容易拓展新的产品类，增加一个产品类就会修改抽象工厂，导致每个具体工厂也要修改。
+
+-----------------------------------------------------
+
+
+
+
+
+## 第七章 时势造英雄——策略模式
+
+#### 7.1 策略模式介绍
+
+**定义：**定义一系列算法，并将每种算法封装起来，使用它们还可以互相替换。让算法独立于使用它的客户而独立变化。
+
+**场景：**
+
+* 针对同一类型的多种处理方式，仅仅是行为有所差别时。
+* 需要安全的封装多种同一类型的操作时。
+* 出现同一抽象类有多个子类，而且有需要使用 if-else 或者 switch 来选择具体子类时。
+
+**角色：**
+
+* **Context**：用来操作策略的上下文环境
+* **Strategy**：策略的抽象
+* **ConcreteStrategyA/B**：具体的策略实现
+
+-----------------------------------------------------
+
+#### 7.2 实现方式
+
+##### 算法替换，简化逻辑和结构，增加了可读性，稳定性，拓展性。
+
+```
+
+public interface CalculateStrategy {
+    int calculatePrice(int km);
+}
+
+public class BusStrategy implements CalculateStrategy {
+    @override
+    public int calculatePrice(int km) {
+        // 计算过程
+        return busCalculatePrice;
+    }
+}
+
+public class SubwayStrategy implements CalculateStrategy {
+    @override
+    public int calculatePrice(int km) {
+        // 计算过程
+        return subwayCalculatePrice;
+    }
+}
+
+public class TranficCalculate {
+    public static void main(String[] args) {
+        TranficCalculate calculate = new TranficCalculate();
+        calculate.setStrategy(new BusStrategy());
+        int price = calculate.calculatePrice(km);
+    }
+    
+    CalculateStrategy strategy;
+    public void setStrategy(CalculateStrategy strategy) {
+        this.strategy = strategy;
+    }
+    public int calculatePrice(int km) {
+        return strategy.calculatePrice(km);
+    }
+}
+
+```
+
+-----------------------------------------------------
+
+#### 7.3 Android 源码中的策略模式
+
+##### 7.3.1 时间插值器
 
 
 
