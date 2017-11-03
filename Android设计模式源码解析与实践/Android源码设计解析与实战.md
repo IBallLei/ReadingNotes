@@ -1035,8 +1035,8 @@ Animator 通过 PropertyValuesHolder 来更新目标属性，如果没有设置�
 
 ##### 7.4.2 属性动画的核心类
 
-* ValueAnimation：Animation 的子类，实现动画的整个逻辑。
-* ObjectAnimation：ValueAnimation 的子类，对象属性动画操作类，通过使用动画的形式操作对象的属性。
+* ValueAnimator：Animation 的子类，实现动画的整个逻辑。
+* ObjectAnimator：ValueAnimation 的子类，对象属性动画操作类，通过使用动画的形式操作对象的属性。
 * TimeInterpolator：时间插值器，根据时间流逝的百分比计算当前的属性值改变的百分比。系统预设插值器：线性插值器，加速减速插值器，减速插值器。
 * TypeEvaluator：类型估值算法，根据当前属性值改变的百分比来计算改变后的属性值。系统预设：针对整型属性，浮点型属性，Color 属性。
 * Property：属性对象，主要定义了属性的 set 和 get 方法。
@@ -1046,8 +1046,48 @@ Animator 通过 PropertyValuesHolder 来更新目标属性，如果没有设置�
 
 ##### 7.4.3 基本使用
 
+* 改变一个对象的 translationY 属性，在 Y 轴上平移一段距离，在默认时间内完成。
 
+```
+ObjectAnimator.ofFloat(myObject, "translationY", -myObject.getHeight()).start();
+```
 
+* 改变一个 View 的背景色属性：
+
+```
+ValueAnimator colorAnim = ObjectAnimator.ofInt(this, "backgroundColor", 0xFFFF8080, 0xFF8080FF);
+colorAnim.setDuration(3000); // 3秒
+colorAnim.setEvaluator(new ArgbEvaluator()); // 颜色估值器
+colorAnim.setRepeatCount(ValueAnimator.INFINITE); // 无限循环
+colorAnim.setRepeatMode(ValueAnimator.REVERSE); // 反转
+colorAnim.start();
+```
+
+* 动画集合，5秒内对 View 旋转，平移，缩放，透明度都进行改变。
+
+```
+AnimatorSet set = new AnimatorSet();
+set.playTogethor(
+    ObjectAnimator.ofFloat(myView, "rotationX", 0, 360),
+    ObjectAnimator.ofFloat(myView, "rotationY", 0, 180),
+    ObjectAnimator.ofFloat(myView, "rotation", 0, -90),
+    ObjectAnimator.ofFloat(myView, "translationX", 0, 90),
+    ObjectAnimator.ofFloat(myView, "translationY", 0, 90),
+    ObjectAnimator.ofFloat(myView, "scaleX", 1, 1.5f),
+    ObjectAnimator.ofFloat(myView, "scaleY", 1, 0.5f),
+    ObjectAnimator.ofFloat(myView, "alpha", 1, 0.25f, 1)
+    );
+set.setDuration(5000).start();
+```
+
+* 调用属性动画特有的 animate() 方法，两秒，y 轴旋转720°，平移到（100，100）的位置。
+
+```
+Button buttion = (Button) findViewById(R.id.buttion);
+animate(buttion).setDuration(2000).rotationYBy(720).x(100).y(100);
+```
+
+##### 7.4.4 流程图
 
 
 
