@@ -983,9 +983,68 @@ public class TranficCalculate {
 
 #### 7.3 Android 源码中的策略模式
 
-##### 7.3.1 时间插值器
+##### 7.3.1 时间插值器和估值器
 
+**时间插值器作用：**通过时间流逝的百分比，计算出当前属性值改变的百分比。
 
+**估值器作用：**通过时间插值器获得的属性百分比，计算出当前属性值改变的值，设置给 View。
+
+##### 7.3.2 动画中的时间插值器
+
+当调用 View.startAnimation(Animation a) 启动动画：
+
+1. 初始化动画开始时间：a.setStartTime();
+
+2. 对 View 设置动画：setAnimation(a);
+
+3. 刷新父类缓存：invalidateParentCaches();
+
+    1. 父类中，会调用 dispatchDraw() 对 View 进行重绘，最终调用 drawChild(),内部调用 child.draw();
+
+    2. 在 View 的 draw 方法中，会查看是否清除动画，获取动画，绘制动画（drawAnimation）等操作。
+
+    3. 绘制动画：
+
+        1. 获取是否初始化过动画，未初始化时去初始化，然后获取 Transformation 对象，储存动画信息。
+
+        2. 通过 Animation 的 getTransformation()，获取动画的相关值。
+
+            1. 计算时间流逝百分比，判断是否动画已完成
+
+            2. 通过插值器获取属性改变的百分比：getInterpolation() 获取插值器
+
+            3. 应用动画效果：applyInterpolation()，通过不同动画的这个方法，改变了 View 的属性。
+
+            4. 如果动画执行完，出发完成回调或者重复执行等操作
+
+        3. 根据具体实现，判断当前动画类型，是否要进行位置大小调整，然后刷新不同区域值。
+
+        4. 获取重汇区域，重新计算有效区域，更新这块区域。
+
+4. 刷新本身及子 View：invalidate();
+
+-----------------------------------------------------
+
+#### 7.4 深入属性动画
+
+>属性动画在 Android 3.0 版本以上使用，兼容低版本可以使用 NineOldAnimations 兼容库。
+
+##### 7.4.1 属性动画的总体设计
+
+Animator 通过 PropertyValuesHolder 来更新目标属性，如果没有设置目标属性的 Property 对象，会通过反射调用目标属性的 setter 方法更新属性值；否则，就会调用 Property 的 set 方法来设置属性值。属性值通过 KeyFrameSet 利用插值器和估值器的计算在动画执行中，不断计算当前属性值，然后更新属性值形成动画。
+
+##### 7.4.2 属性动画的核心类
+
+* ValueAnimation：Animation 的子类，实现动画的整个逻辑。
+* ObjectAnimation：ValueAnimation 的子类，对象属性动画操作类，通过使用动画的形式操作对象的属性。
+* TimeInterpolator：时间插值器，根据时间流逝的百分比计算当前的属性值改变的百分比。系统预设插值器：线性插值器，加速减速插值器，减速插值器。
+* TypeEvaluator：类型估值算法，根据当前属性值改变的百分比来计算改变后的属性值。系统预设：针对整型属性，浮点型属性，Color 属性。
+* Property：属性对象，主要定义了属性的 set 和 get 方法。
+* PropertyValuesHolder：持有目标属性 Property，setter 和 getter 方法以及关键帧集合和类。
+* KeyFrameSet：储存一个动画的关键帧集合。
+* AnimationProxy：在 Android 3.0 以下版本 View 使用属性动画的辅助类。
+
+##### 7.4.3 基本使用
 
 
 
