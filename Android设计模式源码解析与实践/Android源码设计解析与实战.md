@@ -1046,13 +1046,13 @@ Animator 通过 PropertyValuesHolder 来更新目标属性，如果没有设置�
 
 ##### 7.4.3 基本使用
 
-* 改变一个对象的 translationY 属性，在 Y 轴上平移一段距离，在默认时间内完成。
+* **改变一个对象的 translationY 属性，在 Y 轴上平移一段距离，在默认时间内完成：**
 
 ```
 ObjectAnimator.ofFloat(myObject, "translationY", -myObject.getHeight()).start();
 ```
 
-* 改变一个 View 的背景色属性：
+* **改变一个 View 的背景色属性：**
 
 ```
 ValueAnimator colorAnim = ObjectAnimator.ofInt(this, "backgroundColor", 0xFFFF8080, 0xFF8080FF);
@@ -1063,7 +1063,7 @@ colorAnim.setRepeatMode(ValueAnimator.REVERSE); // 反转
 colorAnim.start();
 ```
 
-* 动画集合，5秒内对 View 旋转，平移，缩放，透明度都进行改变。
+* **动画集合，5秒内对 View 旋转，平移，缩放，透明度都进行改变：**
 
 ```
 AnimatorSet set = new AnimatorSet();
@@ -1080,7 +1080,7 @@ set.playTogethor(
 set.setDuration(5000).start();
 ```
 
-* 调用属性动画特有的 animate() 方法，两秒，y 轴旋转720°，平移到（100，100）的位置。
+* **调用属性动画特有的 animate() 方法，两秒，y 轴旋转720°，平移到（100，100）的位置：**
 
 ```
 Button buttion = (Button) findViewById(R.id.buttion);
@@ -1088,6 +1088,87 @@ animate(buttion).setDuration(2000).rotationYBy(720).x(100).y(100);
 ```
 
 ##### 7.4.4 流程图
+
+1. **ValueAnimation：**
+
+    开始 —— 设置动画时间，目标对象，属性值 —— 启动动画 —— 是否延时执行
+
+    1. 否 ——
+
+    2. 是 —— 将动画放入队列 —— 通过 handler 发送延时消息来延后执行 —— 
+
+    执行动画 —— 根据双器算出属性值 —— 是否设置了 Property ——
+
+    1. 是 —— 通过 Property 的 set 方法设置属性值 —— 
+
+    2. 否 —— 通过反射调用属性的 set 方法更新属性值 ——
+
+    动画是否结束 —— 
+
+    1. 否 —— 根据双器算出属性值 —— 。。。
+
+    2. 是 —— 结束动画
+
+
+2. **ObjectAnimation：**
+
+    开始 —— 设置动画时间，目标对象，属性值 —— 启动动画 —— 是否延时执行
+
+    1. 否 ——
+
+    2. 是 —— 将动画放入队列 —— 通过 handler 发送延时消息来延后执行 —— 
+
+    执行动画 —— 根据双器算出属性值 —— 系统版本是否小于 API 11 —— 
+
+    1. 通过 Matrix 实现动画效果 —— 
+
+    2. 通过 Android 3.0 以后的 setter 方法实现动画 —— 
+
+    动画是否结束 —— 
+
+    1. 否 —— 根据双器算出属性值 —— 。。。
+
+    2. 是 —— 结束动画
+
+##### 7.4.4 核心原理分析
+
+从 ObjectAnimation.ofFloat() 分析属性动画原理：
+
+1. 构建属性动画：new ObjectAnimation();
+
+2. 设置属性值：anim.setFloatValues(values); Values 是一个值，是目标值；两个值，一个初始值，一个目标值。通过判断 Values 的值和 mProperty 的值，选择传入不同的值到 setValues() 方法中。
+
+    1. 在设置属性值的方法中，用到 PropertyValuesHolder.ofFloat() ，核心类，作用是保存属性的名称和 setter、getter 方法以及目标值。
+
+        1. 构建 FloatPropertyValuesHolder
+
+        2. 构造函数中，设置目标属性值 setFloatValues(values)，方法内调用了 KeyFrameSet.ofFloat(values)：
+
+        3. 调用父类的设置值的方法
+
+        4. 获取关键帧：mFloatKeyFrameSet
+
+3. 返回 anim。
+
+4. 设置完属性值之后，调用 start() 方法，开始执行动画：判断 looper 是否为空；设置基本状态；启动动画；将动画加到队列；是否延时；发送启动动画的消息。
+
+5. 在 handler 中，收到消息：获取延时和要播放的动画列表；
+
+    1. Animation_start：获取还未执行的动画列表，start 中添加的就是这个列表；复制一份等待执行的动画列表；循环取出动画，如果延时为 0：启动动画（startAnimation()），不为 0：添加到延时列表。
+
+    2. startAnimation()：初始化动画，对系统版本进行判断；将动画添加到 sAnimation 集合中；回调动画开始的 Hook
+
+    3. Animation_frame：获取正在执行的动画数量，遍历准备播放和延时播放的动画，如果到了播放的时间，则播放动画，然后遍历立即执行 sAnimation 里表中的动画，最后，如果动画列表的动画没有放完，再发一个 Action_frame 的消息，使它继续循环 Animation_frame 这个处理流程，知道全部动画放完。
+
+-----------------------------------------------------
+
+#### 7.5 策略模式实战
+
+
+
+
+
+
 
 
 
