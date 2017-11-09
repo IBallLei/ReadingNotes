@@ -1164,11 +1164,240 @@ animate(buttion).setDuration(2000).rotationYBy(720).x(100).y(100);
 
 #### 7.5 策略模式实战
 
+**图片加载不仅需要顺序加载，同事需要逆序加载：**
+
+加载策略接口：
+
+```
+
+public interface Policy {
+    public int compare(Request r1, Request r2); 
+}
+
+```
+
+顺序加载策略：
+
+```
+
+public class SerialPolicy implements Policy {
+    public int compare(Request r1, Request r2) {
+        return r1.serialNum - r2.serialNum;
+    } 
+}
+
+```
+
+逆序加载策略：
+
+```
+
+public class ReversePolicy implements Policy {
+    public int compare(Request r1, Request r2) {
+        return r2.serialNum - r1.serialNum;
+    } 
+}
+
+```
+
+给 Request 增加实现 Comparable 接口：
+
+```
+
+public class ReversePolicy implements Comparable {
+    SerialPolicy mSerialPolicy = new SerialPolicy();
+    public int compareTo(Request r) {
+        return mSerialPolicy.compare(this, r);
+    } 
+}
+
+```
+
+将请求加到队列中：
+
+```
+
+public void displayImage(...) {
+    Request r = new Request();
+    // 加载配置对象
+    r.config = ...
+    // 设置加载策略
+    r.setLoadPolicy(mConfig.loadPolicy);
+    // 添加到优先级队列，会进行排序
+    mImageQueue.add(r);
+}
+
+```
+
+-----------------------------------------------------
+
+#### 7.6 总结
+
+* 优点：结构清晰、直观；耦合度相对低、拓展方便；封装彻底、数据安全。
+
+* 缺点：增加子类。
+
+-----------------------------------------------------
 
 
 
 
 
+## 第八章 随遇而安——状态模式
+
+#### 7.1 状态模式介绍
+
+**定义：**当一个对象内在状态改变时允许改变其行为，这个对象看起来像是改变了其类。
+
+**场景：**
+
+* 一个对象的行为取决于他的状态，并且它必须在运行时根据状态改变他的行为。
+* 代码中包含大量与对象状态有关的条件语句。（if-else、switch）
+
+**角色：**
+
+* **Context**：用来操作策略的上下文环境
+* **State**：状态的抽象类
+* **ConcreteStateA/B**：具体的状态实现
+
+-----------------------------------------------------
+
+#### 7.2 实现方式
+
+```
+
+public interface TVState {
+    void nextChannel();
+    void prevChannel();
+}
+
+public class PowerOffState implements TVState {
+
+    void nextChannel() {
+        // 无效果
+    }
+
+    void prevChannel() {
+        // 无效果
+    }
+}
+
+public class PowerOnState implements TVState {
+
+    void nextChannel() {
+        // 下一个频道
+    }
+
+    void prevChannel() {
+        // 上一个频道
+    }
+}
+
+public interface PowerController {
+    void powerOn();
+    void powerOff();
+}
+
+public class TVController implements PowerController {
+    TVState mTVState;
+
+    public void setTVState(TVState tvState) {
+        mTVState = tvState;
+    }
+
+    void powerOn() {
+        setTVState(new PowerOnState())
+        // 开机
+    }
+
+    void powerOff() {
+        setTVState(new PowerOffState())
+        // 关机
+    }
+
+    public void turnUp() {
+        mTVState.turnUp();
+    }
+
+    public void turnDown() {
+        mTVState.turnDown();
+    }
+
+    public void nextChannel() {
+        mTVState.nextChannel();
+    }
+
+    public void prevChannel() {
+        mTVState.prevChannel();
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        TVController mTVController = new TVController();
+
+        mTVController.powerOn();
+
+        mTVController.nextChannel();
+
+        mTVController.prevChannel();
+
+        mTVController.powerOff();
+    }
+}
+```
+
+-----------------------------------------------------
+
+#### 7.3 WiFi 管理中的状态模式
+
+##### WiFi 设置页面：WiFiSetting 一个 Fragment
+
+1. 构造中，创建监听 WiFi 状态的广播；在 onResume 中注册监听；onActivityCreated 中获取 WiFiManager，初始化空列表；
+
+2. SwitchBar：WiFi 的开关。
+
+3. WiFiEnable：创建一个广播来监听 WiFi 状态的改变，并且实现了按钮的状态改变监听，当状态改变时被广播接收器接收到，通过 handleWiFiStateChanged 函数修改按钮状态。
+
+4. WiFi 状态修改后，会导致 SwitchBar 按钮状态的修改，又会触发 onCheckedChanged() 回调函数，调用 WiFiManager.setWifiEnabled(isChecked) 来修改 WiFi 状态。
+
+5. setWifiEnabled 中实际是调用 WiFiService 的方法来改变WiFi状态。（WiFiService 同 AMS、WMS 一样，启动时一起被注入到 ServiceManager 中）
+
+6. WiFiService 中，通过 WiFiController 用 SmHandler 发送消息，在 SMHandler 中，处理消息，并且返回处理的状态，然后执行状态转换。
+
+7. 设置新的 WiFi 状态（状态模式雏形）
+
+##### WWiFi 状态模式：
+
+1. State 基类：enter，exit，processMessage 三个函数，在进入状态，退出状态和处理消息时调用。
+
+2. WifiStateMachine：都早函数中，通过调用 addState() 方法定义各个状态切换的层级
+
+3. 不同的 State 实现类的三个相同方法实现不同，来处理不同状态下的逻辑。
+
+-----------------------------------------------------
+
+#### 8.4 状态模式实战
+
+在 App 中，通常登录和未登录状态下，相同的实现产生的逻辑不同，比如登录状态下的转发按钮会调用转发业务逻辑，而未登录状态下的转发按钮会跳到登录页面，通过状态模式实现这种效果。
+
+-----------------------------------------------------
+
+#### 8.5 总结
+
+* 优点：将繁琐的状态判断转化成清晰的状态类族，也保证了可拓展性和可维护性。
+
+* 缺点：增加系统类和对象的个数。
+
+-----------------------------------------------------
+
+
+
+
+
+## 第九章 
+
+ 
 
 
 
