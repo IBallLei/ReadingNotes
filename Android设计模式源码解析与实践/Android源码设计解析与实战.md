@@ -905,9 +905,13 @@ public class Client {
 
 #### 6.4 总结
 
-* 优点：分离接口和实现，使用抽象工厂来创建需要的对象，不用知道具体实现是谁，面向产品的接口编程，从具体的接口实现中解耦。基于接口和实现的分离，使该模式在切换产品类时更加灵活。
+##### 优点
 
-* 缺点：类文件爆炸性增加；不容易拓展新的产品类，增加一个产品类就会修改抽象工厂，导致每个具体工厂也要修改。
+* 分离接口和实现，使用抽象工厂来创建需要的对象，不用知道具体实现是谁，面向产品的接口编程，从具体的接口实现中解耦。基于接口和实现的分离，使该模式在切换产品类时更加灵活。
+
+##### 缺点
+
+* 类文件爆炸性增加；不容易拓展新的产品类，增加一个产品类就会修改抽象工厂，导致每个具体工厂也要修改。
 
 -----------------------------------------------------
 
@@ -1245,7 +1249,7 @@ public void displayImage(...) {
 
 ## 第八章 随遇而安——状态模式
 
-#### 7.1 状态模式介绍
+#### 8.1 状态模式介绍
 
 **定义：**当一个对象内在状态改变时允许改变其行为，这个对象看起来像是改变了其类。
 
@@ -1262,7 +1266,7 @@ public void displayImage(...) {
 
 -----------------------------------------------------
 
-#### 7.2 实现方式
+#### 8.2 实现方式
 
 ```
 
@@ -1349,7 +1353,7 @@ public class Client {
 
 -----------------------------------------------------
 
-#### 7.3 WiFi 管理中的状态模式
+#### 8.3 WiFi 管理中的状态模式
 
 ##### WiFi 设置页面：WiFiSetting 一个 Fragment
 
@@ -1395,12 +1399,191 @@ public class Client {
 
 
 
-## 第九章 
+## 第九章 使编程更有灵活性——责任链模式
 
- 
+#### 9.1 责任链模式介绍
+
+**定义：**使多个对象都有机会处理请求，从而避免了请求的发送者和接受者之间的耦合关系。将这些对象连成一条链，并沿着这条链传递请求，直到有对象处理它为止。
+
+**场景：**
+
+* 多个对象可以处理同一请求，但具体由哪个对象处理则在运行时动态决定。
+* 在请求处理者在不明确的情况下，向多个对象中的一个提交请求。
+* 需要动态指定一组对象处理请求。
+
+**角色：**
+
+* **Handler**：抽象处理者
+* **ConcreteHandler**：具体处理者
+
+-----------------------------------------------------
+
+#### 9.2 实现方式
+
+**公司报销系统：**
+
+```
+
+/**
+ * 抽象领导者
+ */
+public abstract class Leader {
+    protect Leader nextHandler;
+
+    public void handleRequtest(int money){
+        if(money <= limit()) {
+            handle(money);
+        } else {
+            if(null != nextHandler) {
+                nextHandler.handleRequtest(money);
+            }
+        }
+    }
+
+    public abstract int limit();
+
+    public abstract void handle(int money);
+}
+
+/**
+ * 组长
+ */
+public class GroupLeader extends Leader {
+
+    public abstract int limit() {
+        return 1000;
+    }
+
+    public abstract void handle(int money) {
+        // 报销1000以下款项
+    }
+}
+
+/**
+ * 主管
+ */
+public class Director extends Leader {
+
+    public abstract int limit() {
+        return 5000;
+    }
+
+    public abstract void handle(int money) {
+        // 报销6000以下款项
+    }
+}
+
+/**
+ * 经理
+ */
+public class Manager extends Leader {
+
+    public abstract int limit() {
+        return 10000;
+    }
+
+    public abstract void handle(int money) {
+        // 报销10000以下款项
+    }
+}
+
+/**
+ * 老板
+ */
+public class Boss extends Leader {
+
+    public abstract int limit() {
+        return Integer.MAX_VALUE;
+    }
+
+    public abstract void handle(int money) {
+        // 报销款项
+    }
+}
+
+public class XiaoMing {
+    public static void main(String[] args) {
+        Leader mGroupLeader = new GroupLeader();
+        Leader mDirector = new Director();
+        Leader mManager = new Manager();
+        Leader mBoss = new Boss();
+
+        mGroupLeader.nextHandler = mDirector;
+        mDirector.nextHandler = mManager;
+        mManager.nextHandler = mBoss;
+
+        int money = 50000;
+        mGroupLeader.handleRquest(money);
+    }
+}
+```
+
+-----------------------------------------------------
+
+#### 9.3 Android 源码中责任链模式实现
+
+事件的分发处理，Android 开发艺术探索中的比较好理解。
+
+-----------------------------------------------------
+
+#### 9.4 责任链模式实战
+
+**Android 中有序广播接收者和责任链相思：**
+
+``` 
+public class FirstReceiver extends BroadcastReceiver {
+    @override
+    public void onReceive(Context context, Intent intent) {
+        int limit = intent.getIntExtra("limit", -1000);
+
+        if(limit == 1000) {
+            // 相关处理
+            // 停止传播广播
+            abortBroadcast();
+        } else {
+            // 发送给下一个接受者
+            setResultExtras();
+        }
+    }
+}
+```
+
+-----------------------------------------------------
+
+#### 9.5 总结
+
+* 优点：请求者与处理者解耦，提高灵活性。
+
+* 缺点：会遍历所有调用者，影响性能。
+
+-----------------------------------------------------
 
 
 
+
+
+## 第十章 化繁为简的翻译机——解释器模式
+
+#### 10.1 解释器模式介绍
+
+**定义：**给定一个语言，定义一个文法的一种表示，并定义一个解释器，该解释器使用该表示来解释语言中的句子。
+
+**场景：**
+
+* 如果某个简单的语言需要解释执行而且可以将该语言的语句表示为一个抽象的语法树时。
+* 在某些特定的领域出现不断重复的问题时，可以将该领域的问题转化成一种语法规则下的领域，然后构建解释器来解释该语句。
+
+**角色：**
+
+* **AbstractExpression**：抽象表达式
+* **TerminalExpression**：终结符表达式
+* **NonterminalExpression**：非终结符表达式
+* **Context**：上下文
+* **Client**：客户端
+
+-----------------------------------------------------
+
+#### 10.2 实现方式
 
 
 
