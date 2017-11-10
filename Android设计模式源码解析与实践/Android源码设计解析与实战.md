@@ -1583,9 +1583,103 @@ public class FirstReceiver extends BroadcastReceiver {
 
 -----------------------------------------------------
 
-#### 10.2 实现方式
+#### 10.2 解释器模式简单实现
 
+**利用算数器解释器来算加法：**
 
+```
+
+/**
+ * 抽象算法表示
+ */
+public abstract class ArithmeticExpression {
+    public abstract int interpret();
+}
+
+/**
+ * 数字解释器
+ */
+public class NumberExpression extends ArithmeticExpression {
+    private int num;
+
+    public NumberExpression(int num) {
+        this.num = num;
+    }
+
+    public int interpret() {
+        return num;
+    }
+}
+
+/**
+ * 运算符解释器
+ */
+public abstract class OperatorExpression extends ArithmeticExpression {
+    private ArithmeticExpression exp1;
+    private ArithmeticExpression exp2;
+
+    public NumberExpression(ArithmeticExpression exp1,
+        ArithmeticExpression exp2) {
+        this.exp1 = exp1;
+        this.exp2 = exp2;
+    }
+}
+
+/**
+ * 加法运算符解释器
+ */
+public abstract class AdditionExpression extends OperatorExpression {
+    public AdditionExpression(ArithmeticExpression exp1,
+        ArithmeticExpression exp2) {
+        super(exp1, exp2);
+    }
+
+    @override
+    public int interpret() {
+        return exp1.interpret() + exp2.interpret();
+    }
+}
+
+public class Calculator {
+    private Stack<ArithmeticExpression> mExpStack = new Stack<>();
+
+    public Calculator(String expression) {
+        ArithmeticExpression exp1, exp2;
+
+        String[] elements = expression.split(" ");
+
+        for(int i; i < elements.length; i++) {
+            switch(elements[i]) {
+                cass "+":
+                    exp1 = mExpStack.pop();
+                    exp2 = new NumberExpression(Integer.valueOf(elements[++i]));
+                    mExpStack.push(new AdditionExpression(exp1, exp2));
+                    break;
+
+                default:
+                    mExpStack.push(new NumberExpression(Integer.valueOf(elements[i])));
+                    break;
+            }
+        }
+    }
+
+    public int calculator() {
+        return mExpStack.pop().interpret();
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        Calculator c = new Calculator("111 + 222 + 333 + 444");
+        // 获取加法字符串结果
+        int result = c.calculator();
+    }
+}
+```
+
+-----------------------------------------------------
+
+#### 10.3 Android 源码中的解释器模式实现
 
 
 
