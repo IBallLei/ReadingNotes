@@ -1,4 +1,4 @@
-## 第一章 面向对象的六大原则
+# 第一章 面向对象的六大原则
 
 #### 1.1 单一原则——SRP
 
@@ -145,7 +145,7 @@ public class SingletonManager {
 
 #### 2.3 Android源码中的单例模式:LayoutInflater
 
-&emsp;&emsp;在Android中，我们通常会获取许多系统级的服务，如WindowManagerService、ActivityManagerService以及LayoutInflater，这些类会注册在系统之中。我们通过Context的getSystemService(key)方法进行获取使用。在LayoutInflater的使用中，通过LayoutInflater.from(context)获取LayoutInflater服务，在from方法中是通过context.getSystemService(Context.LAYOUT_INFLATER_SERVICE)获取到单例，再调用其inflate()等方法加载布局控件。
+&emsp;&emsp;在Android中，我们通常会获取许多系统级的服务，如 WindowManagerService、ActivityManagerService 以及 LayoutInflater，这些类会注册在系统之中。我们通过 Context 的 getSystemService(key) 方法进行获取使用。在 LayoutInflater 的使用中，通过 LayoutInflater.from(context)获取 LayoutInflater 服务，在 from 方法中是通过 context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) 获取到单例，再调用其 inflate() 等方法加载布局控件。
 
 &emsp;&emsp;通过Android代码分析获取单例的整个流程：
 
@@ -1681,7 +1681,334 @@ public class Client {
 
 #### 10.3 Android 源码中的解释器模式实现
 
+##### 10.3.1 PackageParser 对 AndroidManifest.xml 文件中的每个组件标签创建了相应的类用于储存相应的信息：
 
+1. PackageParser 按照解释器模式在以内部类方式创建了 Activity, Service, Provider, Permission 等构件对应的类，与 Manifest 中的标签对应。
+
+2. 在 Android 启动解析安装的应用包时，调用 PackageManagerService 的方法 scanPackageLI(File file) 和 scanPackageLI(PackageParser.Package pkg)。第一个方法是将 apk 文件解析获取解析器，然后传入第二个方法，进行解析保存在 PSM。
+
+3. 在 scanPackageLI() 方法中，调用 PackageParser 的解析方法 parsePackage(), 该方法同上有两个不同参数的方法 parsePackage(File file) 和 parsePackage(Resource res)，调用同上，第一个方法调用第二个方法。
+
+4. 在 parsePackage() 方法中，对 AndroidManifest 文件内的各个节点标签就行解析，对 Application 标签调用 parseApplication() 方法，对标签内的 Activity，Service 等标签进行解析和创建。注意：对 Activity 的解析方法 parseActivity() 也对 broadcast 进行解析。
+
+##### 10.3.2 PackageManagerService
+
+1. 与其他服务一样，PMS 也是由 SystemServer 启动。在 SystemServer 的 initAndLoop() 方法中，调用 PMS 的静态 main() 方法，然后内部创建 PSM 保存在 ServiceManager 中。ServiceManager 是 Binder 进程间通信的守护线程，管理 Android 系统中的 Binder 对象。
+
+2. PMS 的作用就是管理应用程序包。
+
+-----------------------------------------------------
+
+#### 10.4 总结
+
+* 优点：灵活的拓展性。
+
+* 缺点：会产生更多的类，复杂的文法会让代码树看起来繁琐，不推荐复杂的文法。
+
+-----------------------------------------------------
+
+
+
+
+
+## 第十一章 让程序通常执行——命令模式
+
+#### 11.1 命令模式介绍
+
+**定义：**将一个请求封装成一个对象，从而让用户使用不同的请求把客户端参数化；对请求排队或者记录请求日志，以及支持可撤销的操作。
+
+**场景：**
+
+* 需要抽象出待执行的动作，然后以参数的形式提供出来——类似于过程设计中的回调机制，而命令模式正是回调机制的一个面向对象的替代品。
+* 在不同时刻指定、排列和执行请求。一个命令对象可以有与初始请求无关的生存期。
+* 需要支持取消操作。
+* 支持修改日志功能，在系统崩溃时，这些修改可以重新被做一遍。
+* 需要支持事务操作。
+
+**角色：**
+
+* **Receiver**：接受者：执行具体逻辑
+* **Command**：命令者：所有具体命令类的接口
+* **ConcreteCommand**：命令者实现类：用来执行调用接受者的相关方法，加以耦合
+* **Invoker**：请求者：调用命令对象执行请求。
+* **Client**：客户端
+
+-----------------------------------------------------
+
+#### 11.2 命令模式简单实现
+
+**俄罗斯方块控制按钮实现：**
+
+```
+
+public class TetrisMachine {
+    public void toLeft(){
+        // 向左操作
+    }
+    public void toRight(){
+        // 向右操作
+    }
+    public void fastToBottom(){
+        // 快速落下
+    }
+    public void transform(){
+        // 改变形状
+    }
+}
+
+public interface Command {
+    void execute();
+}
+
+public class LeftCommand implements Command {
+    private TetrisMachine machine;
+    public LeftCommand(TetrisMachine machine) {
+        this.machine = machine;
+    }
+    public void execute() {
+        if(machine!=null) {
+            machine.toLeft();
+        }
+    }
+}
+
+public class RightCommand implements Command {
+    private TetrisMachine machine;
+    public RightCommand(TetrisMachine machine) {
+        this.machine = machine;
+    }
+    public void execute() {
+        if(machine!=null) {
+            machine.toRight();
+        }
+    }
+}
+
+public class FallCommand implements Command {
+    private TetrisMachine machine;
+    public FallCommand(TetrisMachine machine) {
+        this.machine = machine;
+    }
+    public void execute() {
+        if(machine!=null) {
+            machine.fastToBottom();
+        }
+    }
+}
+
+public class TransformCommand implements Command {
+    private TetrisMachine machine;
+    public TransformCommand(TetrisMachine machine) {
+        this.machine = machine;
+    }
+    public void execute() {
+        if(machine!=null) {
+            machine.transform();
+        }
+    }
+}
+
+public class Buttons {
+    private LeftCommand mLeftCommand;
+    private RightCommand mRightCommand;
+    private FallCommand mFallCommand;
+    private TransformCommand mTransformCommand;
+
+    // 四种命令的 set 方法
+    ...
+
+    // 四种按钮命令的请求
+    public void toLeft() {
+        mLeftCommand.execute();
+    }
+    ...
+}
+```
+
+>**设计模式的重要原则之一：**对修改关闭对拓展开放。
+
+-----------------------------------------------------
+
+#### 11.3 Android 源码中的命令模式实现
+
+##### Android 事件机制中底层逻辑对事件转发的处理
+
+    底层 C 的代码不做记录了
+
+-----------------------------------------------------
+
+#### 11.4 Android 事件输入系统介绍
+
+1. InputReader 将事件从硬件节点中读取后转化为一个 Event 事件，然后将事件传给 InputDispatcher 将事件分发给合适的窗口并监听 ANR 的发生；然后创建 InputReader 和 InputDispatcher 的父亲 InputManager 由其创建两者并提供 policy 对事件进行预处理；最后涉及系统的 Service 以及面向用户的几个模块：ActivityManager、WindowManager 和 View 等。
+
+2. 负责管理事件输入的事 InputManagerService 也是系统级服务之一，协调第一步中的四个部分。
+
+-----------------------------------------------------
+
+#### 11.5 命令模式实战
+
+##### 画板：
+
+```
+
+// 接受者
+public interface IBrush {
+    void down(Path path, float x, float y);
+    void move(Path path, float x, float y);
+    void up(Path path, float x, float y);
+}
+
+public class NormalBrush implements IBrush{
+    public void down(Path path, float x, float y){
+        path.moveTo(x, y);
+    }
+    public void move(Path path, float x, float y){
+        path.lineTo(x, y);
+    }
+    public void up(Path path, float x, float y){
+    }
+}
+
+public class CircleBrush implements IBrush{
+    public void down(Path path, float x, float y){
+    }
+    public void move(Path path, float x, float y){
+        path.addCircle(x, y, 10, Path.Direction.CW);
+    }
+    public void up(Path path, float x, float y){
+    }
+}
+
+// 命令者
+public interface IDraw {
+    void draw(Canvas canvas);
+    void undo();
+}
+
+public class DrawPath implements IDraw {
+    public Path path;
+    public Paint paint;
+    void draw(Canvas canvas) {
+        canvas.drawPath(path, paint);
+    }
+    void undo() {}
+}
+
+// 一大堆请求类，绘制的执行者画布
+...
+```
+
+-----------------------------------------------------
+
+#### 11.6 总结
+
+* 优点：降低耦合，提高灵活控制性和拓展性。
+
+* 缺点：类的膨胀，大量衍生类创建
+
+-----------------------------------------------------
+
+
+
+
+
+## 第十二章 解决、解耦的钥匙——观察者模式
+
+#### 12.1 观察者模式介绍
+
+**定义：**定义对象间一种一对多的依赖关系，使得每当一个对象改变状态，则所有依赖于他的对象都会得到通知并被自动更新。
+
+**场景：**
+
+* 关联行为场景，是可拆分的，而不是“组合”关系。
+* 事件多级出发场景。
+* 跨系统的消息交换场景，如消息队列、时间总线的处理机制。
+
+**角色：**
+
+* **Subject**：抽象主题：被观察的角色，提供添加和删除观察者的接口，可将任意观察者放到集合中。
+* **ConcreteSubject**：具体主题：将状态存入观察者对象，具体主题状态发生变化通知所有观察者。
+* **Observer**：抽象观察者：定义更新接口，用于主题更新时更新自己。
+* **ConcreteObserver**：具体观察者：实现更新接口。
+
+-----------------------------------------------------
+
+#### 12.2 观察者模式简单实现
+
+##### 程序员订阅技术周报每周接通知
+
+**程序员观察者：**
+
+```
+
+public class Coder implements Observer {
+    public String name;
+    public Coder(String name) {
+        this.name = name;
+    }
+    @Override
+    public void update(Observable o, Object arg) {
+        // 更新代码
+    }
+    @Override
+    public String toString() {
+        return "码农：" + name;
+    }
+}
+
+public class DevTechFrontier extends Observable {
+    public void postNewPublication(String content) {
+        // 标识状态或者内容发生改变
+        setChanged();
+        // 通知所有观察者
+        notifyObservers(content);
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        DevTechFrontier devTechFrontier = new DevTechFrontier();
+        Coder coder1 = new Coder("coder1");
+        Coder coder2 = new Coder("coder2");
+        Coder coder3 = new Coder("coder3");
+        Coder coder4 = new Coder("coder4");
+        devTechFrontier.addObserver(coder1);
+        devTechFrontier.addObserver(coder2);
+        devTechFrontier.addObserver(coder3);
+        devTechFrontier.addObserver(coder4);
+        devTechFrontier.postNewPublication("新的周报发送了！");
+    }
+}
+
+```
+
+-----------------------------------------------------
+
+#### 12.3 Android 源码分析
+
+##### ListView 添加数据，调用 notifyDataSetChanged() 通知条目更新
+
+1. notifyDataSetChanged() 定义在 BaseAdapter 中，调用了成员变量 DataSetObservable 的 notifyChanged() ，在 BaseAdapter 中有两个方法 registerDataSetObserver() 和 unregisterDataSetObserver() 两个方法来注册和取消观察者。
+
+2. DataSetObservable 的 notifyChanged() 中，循环调用 onChanged() 通知注册的观察者，被观察者状态发生改变。
+
+3. 注册的所有观察者，是在 ListView 的 setAdapter() 方法中。
+
+    1. 如果已经有 adapter，先注销对应的观察者。
+
+    2. 调用父类的 setAdapter() 方法。
+
+    3. 获取数据的数量。
+
+    4. 创建一个 ListView 的成员变量数据集观察者 AdapterDataSetObserver，然后将观察者注册到 adapter 中的 DataSetObservable 中。
+
+4. AdapterDataSetObserver 定义在 ListView 的父类 AbsListView 中，内部实现两个方法：onChanged() 和 onInvalidated()。AdapterDataSetObserver 集成自 AbsListView 的父类 AdapterView 中的 AdapterDataSetObserver。
+
+5. AdapterView 中的 AdapterDataSetObserver：被 Adapter 的 notifyDataSetChanged 被调用时，会调用 Adapter 中的 DataSetObservable 的 notifyChanged() ，会调用 ListView 所有观察者的 onChanged() 方法，其中会调用 ListView 重新布局的函数 requestLayout() 使得刷新界面。
+
+-----------------------------------------------------
+
+#### 12.4 观察者模式的深度拓展
 
 
 
