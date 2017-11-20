@@ -2010,6 +2010,69 @@ public class Client {
 
 #### 12.4 观察者模式的深度拓展
 
+##### 广播的发送和接收就是典型的发布——订阅模式
 
+>广播接收者通过 Context 的 registerReceiver() 注册到 AMS 中，当通过 sendBroadcast() 发送广播时，所有注册对应的 IntentFilter 的 BroadcastReceiver 会受到这个消息，并且调用 onReceiver()。这就是观察者模式。
+
+1. 注册广播接受者的方法在 ContextWrapper 中实现，调用了 mBase.registerReceiver(BR, InFi) 返回了 Intent。
+
+2. mBase 是 ContextImpl 的实例，在其 registerReceiver() 的方法，最后调用 registerReceiverInternal()；方法中获取主线程 handler，用来分发从 AMS 发送来的广播， 然后传入 mPackageInfo(LoadedApk).getReceiverDispatch() 方法中，返回 IIntentReceiver；用 IIR 与 AMS 交互，并通过 handler 传递消息；获取 AMS 并调用 registerReceiver() 将 IIntentReceiver 与 AMS 绑定。
+
+3. LoadedApk 的 getReceiverDispatch() 方法：先查看是否已经存在参数传进来的广播接受者 r 对应的 ReceiverDispatch ，如果不存在创建一个，并以 r 为 key 放入一个 HashMap 中，并将这个集合存放到 mReceiver 的 map 集合中，以 Context 为 key。这样，只要给定 Activity 和 BroadcastReceiver 就可以知道 LoadedApk 中，是否已经存在相应的广播接收发布器。
+
+4. 在创建 ReceiverDispatch 的构造函数中，会创建一个 InnerReceiver 实现了 IIntentReceiver 接口的 Binder 对象，通过 getIntentReceiver() 获得，之后传给 AMS 实现与底层的交互接收广播，在构建 ReceiverDispatch 是，将 Handle 参数 ActivityThread 保存下来，方便以后用于广播分发。
+
+5. 先调用 registerReceiver() 获取应用程序的进程块，取进程的 pid 和 uid；然后通过取出 IntentFilter 的所有 Action；先通过 getStickiesLocked() 查找有没有对应的 Sticky Intent 列表。最后一次调用 sendStickyBroadcast() 函数发送某个 Action 广播，系统把这个广播的 Intent 保存起来。之后注册的该 Action 的广播接收者，都会收到这个 Intent。发出的广播虽然处理完了，但是粘在 AMS 中，以便新注册的同 Action 的广播接受者能收到广播。如果不用 sendStickyBroadcast() 来发送广播，得到的 allSticky 和 sticky 都为 null。
+
+6. 传进来的 receiver 不为空，保存到 ReceiverList 列表中，这个列表的宿主进程就是程序进程。在 AMS 中，用一个进程记录块来表示这个应用进程，里面有一个 receivers 专门用来保存这个进程注册的广播接收器。又把这个集合用 receiver 为 key 存入 AMS 中的成员变量 mRegisteredReceivers 中，为了方便在接收广播时，能快速找到广播接收器。
+
+7. 创建一个 BroadcastFilter 来把广播接收器 rl 和 filter 关联起来，然后保存到 AMS 的成员变量 mReceiverResolver 中。这样，Receiver 和 filter 保存在 AMS 里。
+
+8. 发送过程：
+
+    1. 通过 sendBroadcast() 方法，将广播通过 Binder 发送到 AMS 中，通过 Action 找到匹配广播接收器，把广播放入到消息队列中；
+    2. AMS 循环处理消息，通过 Binder 把广播分发给注册的 ReceiverDispatch 将广播放入应用线程的消息队列；
+    3. ReceiverDispatch 在应用的消息循环中处理这个广播，最终将这个广播分发给 BroadcastReceiver 的 onReceive() 中。
+
+-----------------------------------------------------
+
+#### 12.5 观察者模式实战
+
+##### EventBus 的事件总线处理原理流程
+
+-----------------------------------------------------
+
+#### 12.6 总结
+
+* 优点：观察者被观察者之间抽象解耦；增强灵活性和拓展性。
+
+* 缺点：考虑开发效率和运行效率；java 中是顺序执行消息，一个观察者卡顿影响全局。
+
+-----------------------------------------------------
+
+
+
+
+
+## 第十三章 编程中的后悔药——备忘录模式
+
+#### 12.1 备忘录模式介绍
+
+**定义：**。
+
+**场景：**
+
+* 
+
+**角色：**
+
+* **Subject**：抽象主题：被观察的角色，提供添加和删除观察者的接口，可将任意观察者放到集合中。
+* **ConcreteSubject**：具体主题：将状态存入观察者对象，具体主题状态发生变化通知所有观察者。
+* **Observer**：抽象观察者：定义更新接口，用于主题更新时更新自己。
+* **ConcreteObserver**：具体观察者：实现更新接口。
+
+-----------------------------------------------------
+
+#### 12.2 备忘录模式简单实现
 
 
