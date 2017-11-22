@@ -2056,23 +2056,276 @@ public class Client {
 
 ## 第十三章 编程中的后悔药——备忘录模式
 
-#### 12.1 备忘录模式介绍
+#### 13.1 备忘录模式介绍
 
-**定义：**。
+**定义：**行为模式；在不破坏封闭的前提下，捕获一个对象的内部状态，并在这个对象之外保存这个状态，这样就可以将这个对象恢复到原先保存的状态。
 
 **场景：**
 
-* 
+* 需要保存某一个对象的状态或部分状态。
+* 如果用一个接口来让其他对象得到这些状态，将会爆漏对象的实现细节并破坏对象的封装性，一个对象不希望外界直接访问其内部状态，通过中间对象间接访问其内部状态。
 
 **角色：**
 
-* **Subject**：抽象主题：被观察的角色，提供添加和删除观察者的接口，可将任意观察者放到集合中。
-* **ConcreteSubject**：具体主题：将状态存入观察者对象，具体主题状态发生变化通知所有观察者。
-* **Observer**：抽象观察者：定义更新接口，用于主题更新时更新自己。
-* **ConcreteObserver**：具体观察者：实现更新接口。
+* **Originator**：负责创建一个备忘录，可以记录和恢复自身内部状态。
+* **Memento**：备忘录角色，用于存储 Originator 的内部状态。并且可以防止 Originator 以外的对象访问 Originator。
+* **Caretaker**：负责存储备忘录，不能操作进行和访问，只能将备忘录传递给其他对象。。
 
 -----------------------------------------------------
 
-#### 12.2 备忘录模式简单实现
+#### 13.2 备忘录模式简单实现
+
+##### 使命召唤例子
+
+```
+
+public class CallOfDuty {
+    private int mCheckpoint = 1;
+    private int mLifeValue = 100;
+    private String mWeapon = "沙漠之鹰";
+
+    public void play() {
+        mLifeValue -= 10;
+        mCheckpoint++;
+    }
+
+    public void quit() {
+        // 退出游戏
+    }
+
+    public Memoto createMemoto() {
+        Memoto memoto = new Memoto();
+        memoto.mCheckpoint = mCheckpoint;
+        memoto.mLifeValue = mLifeValue;
+        memoto.mWeapon = mWeapon;
+        return memoto;
+    }
+
+    public void restore(Memoto memoto) {
+        this.mCheckpoint = memoto.mCheckpoint;
+        this.mLifeValue = memoto.mLifeValue;
+        this.mWeapon = memoto.mWeapon;
+    }
+}
+
+public class Memoto {
+    public int mCheckpoint;
+    public int mLifeValue;
+    public String mWeapon;
+}
+
+public class Caretaker {
+    Memoto mMemoto;
+    // 存档
+    public void archive(Memoto memoto) {
+        this.mMemoto = memoto;
+    }
+    // 获取存档
+    public Memoto getMemoto() {
+        return mMemoto;
+    }
+}
+
+public class Client {
+    public static void main(String[] args) {
+        CallOfDuty callOfDuty = new CallOfDuty();
+        callOfDuty.play();
+
+        Caretaker caretaker = new Caretaker();
+        caretaker.archive(callOfDuty.createMemoto());
+        callOfDuty.quit();
+
+        CallOfDuty callOfDuty2 = new CallOfDuty();
+        callOfDuty2.restore(caretaker.getMemoto());
+    }
+}
+
+```
+
+-----------------------------------------------------
+
+#### 13.4 Android 源码中的备忘录模式
+
+**Activity 状态保存：onSaveInstanceState() 和 onRestoreInstanceState()**
+
+##### 13.4.1 onSaveInstanceState()
+
+1. 在 onSaveInstanceState() 方法中，首先储存了当前窗口的视图树状态：将 Window 中的视图树中的 View 的状态存到 Bundle 中（window.saveHierarchyState()）。
+
+    1. 先创建一个 SparseArray 用来存储视图树的状态；
+
+    2. 然后调用 mContentView 的 saveHierarchyState()，mContentView 是设置页面内容的根节点，在这里保存整个视图的结构，实际调用了 View 的 dispatchSaveInstanceState():
+
+        1. 如果没有 id 将不会保存 View 的状态。
+
+        2. 调用 onSaveInstanceState() 保存自身状态；ViewGroup 复写了 dispatchSaveInstanceState() 方法，会调用 super.dispatchSaveInstanceState() 保存自身，然后遍历调用子视图 dispatchSaveInstanceState() 来保存子视图的状态。
+
+        3. 把状态保存到传进来的集合中；
+
+    3. 然后将视图结构保存到 outState 中；
+
+    4. 保存页面获取焦点的 View ，该 View 必须要有 id 否则将无法恢复焦点；
+
+    5. 储存整夜页面面板的状态；储存 ActionBar 的状态。
+
+2. 然后储存 Fragment 的状态；
+
+3. 最后如果设置了 Activity 的 ActivityLefecycleCallbacks 那么调用其方法 onSaveInstanceState() 进行状态储存。
+
+4. onSaveInstanceState() 是在 onStop() 之前调用的，在 ActivityThread 的 performStopActivity() 中通过 token 获取 Activity 的 ActivityClientRecord ，然后调用 performStopActivityInner() 中调用方法 callCallActivityOnSaveInstanceState(r) ，最终调用 Instrumentation.callActivityOnSaveInstanceState() 并执行 Activity 的 onSaveInstanceState()方法。**performStopActivityInner() 分以下步骤：**
+
+    1. 判断是否需要保存 Activity 的状态
+    2. 需要保存时调用 Activity 的 onSaveInstanceState()
+    3. 将状态保存到 ActivityClientRecord 的 State 当中
+    4. 调用 Activity 的 onStop() 方法
+
+* 需要被储存的 View 需要实现 onSaveInstanceState() 方法，因为 View 中的该方法返回空。
+* 一个页面的不同 View ，需要有不同的 id 否则会被覆盖，因为存放状态的集合的 key 是用 View 的 id。
+
+##### 13.4.2 onRestoreInstanceState()
+
+执行 onStop() 之前，将 Activity 的状态存入到 mActivities。mActivities 维护了一个 Activity 的信息表。当 Activity 重启的时候，会从 mActivities 中取出对应的 ActivityClientRecord，如果含有状态信息，那么调用 Activity 的 onRestoreInstanceState() 方法。
+
+在调用 performLaunchActivity()：
+
+1. 通过类加载器构建 Activity
+
+2. 创建 Application
+
+3. 关联 appContext 和 Application 到 Activity 中
+
+4. 调用 Activity 的 onCreate()
+
+5. 调用 Activity 的 onRestoreInstanceState()
+
+    1. 先判断启动的 ActivityClientRecord 中的 State 是否为空
+
+    2. State 不为空，会调用 Activity 的 onSaveInstanceState() 获取状态信息，然后将这些状态信息传入到 onCreate()，可以在 onCreate() 中恢复状态。
+
+6. 将 Activity 的信息记录存到 mActivities
+
+-----------------------------------------------------
+
+#### 13.5 深度拓展
+
+##### 13.5.1 onSaveInstanceState() 的调用时机
+
+* 当用户按下 Home 键时
+* 按菜单键切换其他程序
+* 按电源键关闭屏幕
+* 启动一个新的 Activity
+* 屏幕方向切换时
+* 电话打入等情况发生时
+
+**总结：不是用户主动退出 Activity 或者跳转到其他 Activity 的情况下会触发 onSaveInstanceState()。**
+
+##### 13.5.2 使用 V4 包储存状态的 bug
+
+在使用较老的 V4 包中的 FragmentActivity 来用 Fragment 时，会报空指针异常。
+
+原因：如果一个 Fragment 保存的视图状态为空，并且用户可见提示为真，那么 result 这个 Bundle 对象不会被初始化，使用这个的时候，就会空指针。
+
+解决：
+
+1. 复写 FragmentActivity 中的 onSaveInstanceState()，不调用父类的 onSaveInstanceState()。
+
+2. 复写 Fragment 的 nSaveInstanceState() 方法，在这个方法中随便存入一个数据。
+
+-----------------------------------------------------
+
+#### 13.6 实战
+
+##### 记事本：记事本页面，编译栏，保存，撤销，重做
+
+```
+
+public class MainActivity extends Activity {
+    @Override
+    public void onCreate(){
+        // 初始化页面，添加点击事件
+    }
+}
+
+public class NoteCaretaker {
+    public static final int MAX = 30;
+    List<Memoto> mMemotos = new ArrayList<>;
+    int mIndex;
+
+    // 保存备忘录
+    public void saveMemoto(Memoto memoto) {
+        if (mMemotos.size() > MAX) {
+            mMemotos.remove(0);
+        }
+        mMemotos.add(memoto);
+        mIndex = mMemotos.size() - 1;
+    }
+    // 获取上一个备忘录
+    public Memoto getPrevMemoto() {
+        mIndex = mIndex > 0 ? --mIndex : mIndex;
+        mMemotos.get(mIndex);
+    }
+    // 获取下一个备忘录
+    public Memoto getPrevMemoto() {
+        mIndex = mIndex < mMemotos.size() - 1 ? ++mIndex : mIndex;
+        mMemotos.get(mIndex);
+    }
+}
+
+public class NoteEditText extends EditText {
+    // 构造函数
+    ...
+
+    // 为编译器创建备忘录
+    private Memoto createMemotoForEditText() {
+        Memoto memoto = new Memoto();
+        memoto.text = getText().toString();
+        memoto.cursor = getSelectionStart();
+        return memoto;
+    }
+    // 恢复备忘录
+    private void restoreEditText(Memoto memoto) {
+        setText(memoto.text);
+        setSelection(memoto.cursor);
+    }
+}
+
+```
+
+-----------------------------------------------------
+
+#### 13.7 总结
+
+* 优点：提供一种可恢复状态的机制；实现信息封装，用户不必在意实现细节。
+* 缺点：消耗资源，类的成员变量过多，消耗过多资源和内存。
+
+-----------------------------------------------------
+
+
+
+
+
+## 第十四章 解决问题的“第三者”——迭代器模式
+
+#### 14.1 迭代器模式介绍
+
+**定义：**行为设计模式；提供一个方法顺序访问一个容器对象中的各个元素，而又不需要暴露该对象的内部表示。
+
+**场景：**
+遍历一个容器对象的时候。
+
+**角色：**
+
+* **Originator**：负责创建一个备忘录，可以记录和恢复自身内部状态。
+* **Memento**：备忘录角色，用于存储 Originator 的内部状态。并且可以防止 Originator 以外的对象访问 Originator。
+* **Caretaker**：负责存储备忘录，不能操作进行和访问，只能将备忘录传递给其他对象。。
+
+-----------------------------------------------------
+
+#### 14.2 迭代器模式简单实现
+
+
+
+
+
 
 
